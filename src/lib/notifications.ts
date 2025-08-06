@@ -90,17 +90,7 @@ export class NotificationService {
           badge: payload.badge || '/icons/icon-192x192.png',
           tag: payload.tag || 'bet-notification',
           data: payload.data,
-          requireInteraction: payload.requireInteraction || false,
-          actions: [
-            {
-              action: 'view',
-              title: 'Ver Pick'
-            },
-            {
-              action: 'close',
-              title: 'Cerrar'
-            }
-          ]
+          requireInteraction: payload.requireInteraction || false
         })
       } else {
         // Fallback to browser notification
