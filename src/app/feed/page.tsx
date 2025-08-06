@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button'
 import { NotificationPermission } from '@/components/notification-permission'
 import { NotificationStatus } from '@/components/notification-status'
 import { useNotifications } from '@/hooks/use-notifications'
+import { useLoadingManager } from '@/hooks/use-loading-manager'
+import { usePageVisibility } from '@/hooks/use-page-visibility'
 import { startNotificationChecker } from '@/lib/bet-notifications'
 import { 
   Clock, 
@@ -53,14 +55,30 @@ export default function FeedPage() {
   const { user } = useAuth()
   const { isEnabled: notificationsEnabled, scheduleBetNotifications } = useNotifications()
   const [bets, setBets] = useState<BetWithSelections[]>([])
-  const [loading, setLoading] = useState(true)
   const [showNotificationPrompt, setShowNotificationPrompt] = useState(true)
   const [filter, setFilter] = useState<'all' | 'free' | 'premium'>('all')
+  const { isLoading, startLoading, stopLoading, setLoadingError, error } = useLoadingManager({ timeout: 15000 })
+  const { isVisible } = usePageVisibility()
+  const [lastFetchTime, setLastFetchTime] = useState<number>(0)
+  const [isOffline, setIsOffline] = useState(false)
 
-  const fetchBets = async () => {
+  const fetchBets = async (forceRefresh = false) => {
+    // Evitar refetch múltiples si ya se está cargando
+    if (isLoading && !forceRefresh) {
+      console.log('⚠️ Ya está cargando, saltando...')
+      return
+    }
+    
+    // Cache simple - no refetch si fue hace menos de 30 segundos
+    const now = Date.now()
+    if (!forceRefresh && now - lastFetchTime < 30000 && bets.length > 0) {
+      console.log('⏰ Cache válido, saltando refetch...')
+      return
+    }
+
     try {
       console.log('🔄 Iniciando fetchBets...')
-      setLoading(true)
+      startLoading()
 
       let query = supabase
         .from('bets')
@@ -129,14 +147,60 @@ export default function FeedPage() {
 
       console.log('📋 Estableciendo', betsWithAccess.length, 'apuestas en estado')
       setBets(betsWithAccess)
+      setLastFetchTime(Date.now())
+      setIsOffline(false)
       console.log('✅ fetchBets completado exitosamente')
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Error en fetchBets:', error)
+      
+      // Detectar si es error de conexión
+      if (error.message?.includes('fetch') || error.message?.includes('network')) {
+        setIsOffline(true)
+        setLoadingError('Sin conexión a internet. Intentando reconectar...')
+      } else {
+        setLoadingError('Error al cargar las apuestas. Intenta refrescar.')
+      }
     } finally {
-      console.log('🏁 Finalizando fetchBets - setLoading(false)')
-      setLoading(false)
+      console.log('🏁 Finalizando fetchBets')
+      stopLoading()
     }
   }
+
+  // Auto-refetch cuando la página vuelve a ser visible
+  useEffect(() => {
+    if (isVisible && user?.id && bets.length > 0) {
+      // Solo refetch si han pasado más de 2 minutos desde la última actualización
+      const now = Date.now()
+      if (now - lastFetchTime > 120000) {
+        console.log('🔄 Auto-refetch por visibilidad')
+        fetchBets()
+      }
+    }
+  }, [isVisible, user?.id, lastFetchTime])
+
+  // Detectar cambios de conectividad
+  useEffect(() => {
+    const handleOnline = () => {
+      console.log('🌐 Volviendo online')
+      setIsOffline(false)
+      if (user?.id) {
+        fetchBets() // Force refresh cuando volvemos online
+      }
+    }
+
+    const handleOffline = () => {
+      console.log('🚫 Desconectado')
+      setIsOffline(true)
+    }
+
+    window.addEventListener('online', handleOnline)
+    window.addEventListener('offline', handleOffline)
+    
+    return () => {
+      window.removeEventListener('online', handleOnline)
+      window.removeEventListener('offline', handleOffline)
+    }
+  }, [user?.id])
 
   useEffect(() => {
     console.log('🔔 useEffect disparado. Filter:', filter, 'User:', user?.email || 'no-user')
@@ -310,11 +374,11 @@ export default function FeedPage() {
               </div>
               
               <button 
-                onClick={fetchBets} 
-                disabled={loading}
+                onClick={() => fetchBets(true)} 
+                disabled={isLoading}
                 className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
               >
-                <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
+                <RefreshCw size={18} className={isLoading ? 'animate-spin' : ''} />
               </button>
             </div>
           </div>
@@ -331,10 +395,19 @@ export default function FeedPage() {
           />
         )}
         
-        {loading && bets.length === 0 ? (
+        {isLoading && bets.length === 0 ? (
           <div className="text-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
             <p className="text-gray-600 dark:text-gray-400">Cargando picks...</p>
+            {error && (
+              <p className="text-red-600 dark:text-red-400 text-sm mt-2">{error}</p>
+            )}
+            {isOffline && (
+              <div className="flex items-center justify-center gap-2 text-red-600 dark:text-red-400 text-sm mt-2">
+                <WifiOff className="h-4 w-4" />
+                <span>Sin conexión a internet</span>
+              </div>
+            )}
           </div>
         ) : bets.length === 0 ? (
           <div className="text-center py-12">
