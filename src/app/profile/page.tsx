@@ -1,11 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '@/components/auth-provider'
 import { useNotifications } from '@/hooks/use-notifications'
+import { notificationService, ScheduledNotification, NotificationPreferences } from '@/lib/notifications'
+import { useLoadingManager } from '@/hooks/use-loading-manager'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Switch } from '@/components/ui/switch'
 import { 
   Bell, 
   User, 
@@ -15,7 +18,9 @@ import {
   X,
   Clock,
   Smartphone,
-  AlertTriangle
+  AlertTriangle,
+  Trash2,
+  RefreshCw
 } from 'lucide-react'
 
 export default function ProfilePage() {

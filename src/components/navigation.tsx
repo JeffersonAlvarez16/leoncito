@@ -20,7 +20,8 @@ import {
   ChevronLeft,
   LogOut,
   Layers,
-  Users
+  Users,
+  Bell
 } from 'lucide-react'
 
 export function Navigation() {
@@ -63,6 +64,7 @@ export function Navigation() {
       label: 'Administración', 
       routes: [
         { href: '/admin/users', label: 'Usuarios', icon: Users },
+        { href: '/admin/notifications', label: 'Notificaciones', icon: Bell },
         { href: '/admin/security', label: 'Seguridad', icon: Settings },
       ]
     }

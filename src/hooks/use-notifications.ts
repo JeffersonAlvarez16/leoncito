@@ -62,7 +62,7 @@ export function useNotifications() {
     }
 
     try {
-      return await notificationService.scheduleNotification(scheduledTime, payload)
+      return await notificationService.sendNotification(payload)
     } catch (error) {
       console.error('Error scheduling notification:', error)
       return false

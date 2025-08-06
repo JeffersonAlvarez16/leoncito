@@ -13,7 +13,8 @@ import {
   Clock, 
   DollarSign, 
   Lock,
-  RefreshCw
+  RefreshCw,
+  WifiOff
 } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
 import { formatTime, formatDateTime, isToday } from '@/lib/date-utils'
@@ -330,7 +331,7 @@ export default function FeedPage() {
           />
         )}
         
-        {loading ? (
+        {loading && bets.length === 0 ? (
           <div className="text-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
             <p className="text-gray-600 dark:text-gray-400">Cargando picks...</p>
